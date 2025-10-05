@@ -1,0 +1,208 @@
+<%@ page import="java.sql.*" %>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%
+    // Handle form submission
+    String productIdParam = request.getParameter("productId");
+    String quantityParam = request.getParameter("quantity");
+
+    if (productIdParam != null && quantityParam != null) {
+        int productId = Integer.parseInt(productIdParam);
+        int quantity = Integer.parseInt(quantityParam);
+
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            Connection conn = DriverManager.getConnection(
+                "jdbc:mysql://localhost:3306/fashion_store", "root", "your_password");
+
+            PreparedStatement updateProduct = conn.prepareStatement(
+                "UPDATE products SET stock_quantity = stock_quantity - ?, sold_quantity = sold_quantity + ? WHERE id = ?");
+            updateProduct.setInt(1, quantity);
+            updateProduct.setInt(2, quantity);
+            updateProduct.setInt(3, productId);
+            updateProduct.executeUpdate();
+
+            PreparedStatement insertSale = conn.prepareStatement(
+                "INSERT INTO sales (product_id, quantity_sold, sale_date) VALUES (?, ?, CURDATE())");
+            insertSale.setInt(1, productId);
+            insertSale.setInt(2, quantity);
+            insertSale.executeUpdate();
+
+            conn.close();
+        } catch (Exception e) {
+            out.println("<p style='color:red;'>Error processing sale: " + e.getMessage() + "</p>");
+        }
+    }
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Fashion Store</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #fff8f0;
+            color: #333;
+        }
+
+        nav {
+            background-color: turquoise;
+            padding: 10px;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        nav ul li {
+            margin: 0 15px;
+        }
+
+        nav ul li a {
+            color: black;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        section {
+            padding: 30px;
+        }
+
+        h2 {
+            color: darkviolet;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: beige;
+        }
+
+        table, th, td {
+            border: 1px solid #333;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        footer {
+            background-color: #333;
+            color: whitesmoke;
+            text-align: center;
+            padding: 15px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+<nav>
+    <ul>
+        <li><a href="#home">Home</a></li>
+        <li><a href="#products">Products</a></li>
+        <li><a href="#sell">Sell</a></li>
+        <li><a href="#dashboard">Dashboard</a></li>
+    </ul>
+</nav>
+
+<section id="home">
+    <h2>Benefits of Online Shopping</h2>
+    <p>Online shopping offers convenience and a wide selection of products. It allows customers to shop from the comfort of their homes and access items from around the world.</p>
+</section>
+
+<section id="products">
+    <h2>Our Products</h2>
+    <table>
+        <tr>
+            <th>Item</th>
+            <th>Price</th>
+            <th>Description</th>
+        </tr>
+        <tr>
+            <td>T-Shirt</td>
+            <td>Ksh.150</td>
+            <td>Pure cotton</td>
+        </tr>
+        <tr>
+            <td>Dress</td>
+            <td>Ksh.250</td>
+            <td>Stylish and comfy</td>
+        </tr>
+        <tr>
+            <td>Denim Jacket</td>
+            <td>Ksh.500</td>
+            <td>High quality</td>
+        </tr>
+    </table>
+</section>
+
+<section id="sell">
+    <h2>Sell an Item</h2>
+    <form method="post">
+        <label for="productId">Product ID:</label>
+        <input type="number" name="productId" required><br><br>
+        <label for="quantity">Quantity:</label>
+        <input type="number" name="quantity" required><br><br>
+        <input type="submit" value="Sell Item">
+    </form>
+</section>
+
+<section id="dashboard">
+    <h2>Store Dashboard</h2>
+    <table>
+        <tr><th>Item</th><th>Price</th><th>Sold</th><th>In Stock</th><th>Revenue</th></tr>
+        <%
+            try {
+                Class.forName("com.mysql.cj.jdbc.Driver");
+                Connection conn = DriverManager.getConnection(
+                    "jdbc:mysql://localhost:3306/fashion_store", "root", "your_password");
+
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("SELECT * FROM products");
+
+                double totalRevenue = 0;
+
+                while (rs.next()) {
+                    String name = rs.getString("name");
+                    double price = rs.getDouble("price");
+                    int sold = rs.getInt("sold_quantity");
+                    int stock = rs.getInt("stock_quantity");
+                    double revenue = price * sold;
+                    totalRevenue += revenue;
+        %>
+        <tr>
+            <td><%= name %></td>
+            <td>Ksh.<%= price %></td>
+            <td><%= sold %></td>
+            <td><%= stock %></td>
+            <td>Ksh.<%= revenue %></td>
+        </tr>
+        <%
+                }
+                conn.close();
+        %>
+    </table>
+    <h3>Total Revenue: Ksh.<%= totalRevenue %></h3>
+    <%
+            } catch (Exception e) {
+                out.println("<p style='color:red;'>Error loading dashboard: " + e.getMessage() + "</p>");
+            }
+        %>
+</section>
+
+<footer>
+    <p>&copy; 2025 Fashion Store</p>
+</footer>
+</body>
+</html>
